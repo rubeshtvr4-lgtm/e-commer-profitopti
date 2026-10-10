@@ -1,0 +1,1 @@
+function i(r){return r==null||isNaN(r)?"₹0.00":new Intl.NumberFormat("en-IN",{style:"currency",currency:"INR",minimumFractionDigits:2,maximumFractionDigits:2}).format(r)}function t(r){return r==null||isNaN(r)?"0":new Intl.NumberFormat("en-IN").format(r)}function n(r){return r==null||isNaN(r)?"0.0%":`${r>0?"+":""}${r.toFixed(1)}%`}export{n as a,t as b,i as f};
