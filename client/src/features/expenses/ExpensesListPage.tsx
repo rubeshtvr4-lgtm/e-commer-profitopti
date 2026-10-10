@@ -1,13 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { Receipt, Plus, Trash2, Megaphone, Box, Laptop, Wrench, CreditCard } from 'lucide-react';
 import { api } from '../../lib/apiClient';
-import { ExpenseRecord, Pagination } from '../../types';
+import { ExpenseRecord } from '../../types';
 import { formatINR } from '../../lib/currency';
 import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
+import { PageHeader } from '../../components/common/PageHeader';
 import { EmptyState } from '../../components/common/EmptyState';
+import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
+import { useToast } from '../../contexts/ToastContext';
 
 export const ExpensesListPage: React.FC = () => {
+  const { success, error: toastError } = useToast();
   const [expenses, setExpenses] = useState<ExpenseRecord[]>([]);
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [loading, setLoading] = useState(true);
@@ -20,13 +24,17 @@ export const ExpensesListPage: React.FC = () => {
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [modalLoading, setModalLoading] = useState(false);
 
+  // Delete confirm
+  const [deleteExpenseId, setDeleteExpenseId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
   const fetchExpenses = async () => {
     try {
       setLoading(true);
       const params = categoryFilter !== 'all' ? `?category=${categoryFilter}` : '';
       const res = await api.get<{ expenses: ExpenseRecord[] }>(`/expenses${params}`);
       setExpenses(res.expenses || []);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
     } finally {
       setLoading(false);
@@ -47,41 +55,60 @@ export const ExpensesListPage: React.FC = () => {
         description,
         date,
       });
+      success('Expense Recorded', `Logged ${category} expense of ₹${amount}.`);
       setIsModalOpen(false);
       setDescription('');
       fetchExpenses();
-    } catch (err) {
-      console.error(err);
+    } catch (err: any) {
+      toastError('Save Failed', err?.message || 'Could not record expense');
     } finally {
       setModalLoading(false);
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!window.confirm('Delete this expense?')) return;
+  const handleConfirmDelete = async () => {
+    if (!deleteExpenseId) return;
     try {
-      await api.delete(`/expenses/${id}`);
+      setIsDeleting(true);
+      await api.delete(`/expenses/${deleteExpenseId}`);
+      success('Expense Removed', 'Deleted expense entry.');
+      setDeleteExpenseId(null);
       fetchExpenses();
-    } catch (err) {
-      console.error(err);
+    } catch (err: any) {
+      toastError('Delete Failed', err?.message || 'Failed to remove expense');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
   const totalExpense = expenses.reduce((sum, e) => sum + e.amount, 0);
 
+  const getCategoryBadgeClass = (cat: string) => {
+    switch (cat) {
+      case 'advertising':
+        return 'bg-[#F0F5FA] text-[#0284C7] border-[#E0EBF7]';
+      case 'packaging':
+        return 'bg-[#FEF7EC] text-[#D97706] border-[#FDEECC]';
+      case 'software':
+        return 'bg-[#F6F3FB] text-[#7C3AED] border-[#EDE7F9]';
+      case 'operations':
+      case 'shipping':
+        return 'bg-[#EAF5F0] text-[#176B57] border-[#D2ECE1]';
+      default:
+        return 'bg-[#F1F3F6] text-[#555C68] border-[#E7E9ED]';
+    }
+  };
+
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-xl font-bold text-slate-900 tracking-tight">Operating Expenses & Overhead</h2>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Log marketing campaigns, packaging boxes, SaaS subscriptions, and warehouse overhead
-          </p>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <div className="px-3 py-1.5 rounded-xl bg-slate-100 text-xs font-semibold text-slate-800 border border-slate-200">
-            Total: {formatINR(totalExpense)}
+      {/* Header */}
+      <PageHeader
+        title="Operating Expenses & Overhead"
+        description="Log marketing ad spend (CAC), packaging supplies, SaaS software, and operations overhead"
+      >
+        <div className="flex items-center gap-2.5">
+          <div className="px-3.5 py-1.5 rounded-lg bg-white border border-[#E7E9ED] text-xs font-bold text-[#17191C] tabular-nums shadow-xs">
+            Total Outflow: <span className="text-[#C84B4B]">{formatINR(totalExpense)}</span>
           </div>
           <Button
             variant="primary"
@@ -91,13 +118,14 @@ export const ExpensesListPage: React.FC = () => {
             Record Expense
           </Button>
         </div>
-      </div>
+      </PageHeader>
 
-      <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-xs flex items-center gap-3">
+      {/* Filter */}
+      <div className="bg-white p-3.5 sm:p-4 rounded-xl border border-[#E7E9ED] shadow-[0_1px_2px_rgba(0,0,0,0.02)] flex items-center justify-between">
         <select
           value={categoryFilter}
           onChange={(e) => setCategoryFilter(e.target.value)}
-          className="text-xs font-medium px-3 py-1.5 border border-slate-300 rounded-lg bg-white text-slate-700"
+          className="text-xs font-semibold px-3 py-1.5 border border-[#E7E9ED] rounded-lg bg-white text-[#17191C] focus:outline-none focus:border-[#176B57]"
         >
           <option value="all">All Expense Categories</option>
           <option value="advertising">Advertising / CAC</option>
@@ -110,64 +138,67 @@ export const ExpensesListPage: React.FC = () => {
         </select>
       </div>
 
+      {/* Table */}
       {loading ? (
-        <div className="bg-white p-8 rounded-2xl border border-slate-200 animate-pulse h-48" />
+        <div className="bg-white p-12 rounded-2xl border border-[#E7E9ED] animate-pulse h-48" />
       ) : expenses.length === 0 ? (
         <EmptyState
-          icon={<Receipt className="w-10 h-10 text-brand-600" />}
+          icon={<Receipt className="w-8 h-8 text-[#176B57]" />}
           title="No Expenses Recorded"
-          description="Track your advertising and operating overhead to ensure profit margins are completely accurate."
+          description="Track your advertising and operating overhead so your bottom-line profit margins are 100% accurate."
           actionLabel="Record Expense"
           onAction={() => setIsModalOpen(true)}
           showSeedDemo={true}
         />
       ) : (
-        <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm overflow-hidden">
+        <div className="bg-white border border-[#E7E9ED] rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.02)] overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50 text-slate-500 uppercase tracking-wider font-semibold border-b border-slate-200">
+              <thead className="bg-[#F7F8FA] text-[#737983] uppercase tracking-wider font-semibold border-b border-[#E7E9ED]">
                 <tr>
-                  <th className="py-3 px-4">Date</th>
-                  <th className="py-3 px-4">Category</th>
-                  <th className="py-3 px-4">Description</th>
-                  <th className="py-3 px-4">Order Linkage</th>
-                  <th className="py-3 px-4 text-right">Amount</th>
-                  <th className="py-3 px-4 text-center">Actions</th>
+                  <th className="py-3 px-6">Date</th>
+                  <th className="py-3 px-6">Category</th>
+                  <th className="py-3 px-6">Description</th>
+                  <th className="py-3 px-6">Order Linkage</th>
+                  <th className="py-3 px-6 text-right">Amount</th>
+                  <th className="py-3 px-6 text-right">Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-[#E7E9ED]">
                 {expenses.map((e) => (
-                  <tr key={e.id} className="hover:bg-slate-50/70 transition-colors">
-                    <td className="py-3.5 px-4 text-slate-500">
+                  <tr key={e.id || (e as any)._id} className="hover:bg-[#F7F8FA]/60 transition-colors">
+                    <td className="py-3.5 px-6 text-[#737983]">
                       {new Date(e.date).toLocaleDateString('en-IN', {
                         month: 'short',
                         day: 'numeric',
                         year: 'numeric',
                       })}
                     </td>
-                    <td className="py-3.5 px-4 font-semibold text-slate-800 capitalize">
-                      <span className="px-2 py-0.5 rounded bg-slate-100 text-[11px]">
+                    <td className="py-3.5 px-6">
+                      <span
+                        className={`capitalize px-2.5 py-0.5 rounded-md font-semibold text-[11px] border ${getCategoryBadgeClass(
+                          e.category
+                        )}`}
+                      >
                         {e.category}
                       </span>
                     </td>
-                    <td className="py-3.5 px-4 font-medium text-slate-900">{e.description}</td>
-                    <td className="py-3.5 px-4 text-slate-500 font-mono">
-                      {e.orderNumber ? (
-                        <span className="text-brand-600 font-semibold">{e.orderNumber}</span>
-                      ) : (
-                        <span className="text-slate-400">Store General Overhead</span>
-                      )}
+                    <td className="py-3.5 px-6 font-semibold text-[#17191C]">
+                      {e.description || 'Operating overhead entry'}
                     </td>
-                    <td className="py-3.5 px-4 text-right font-bold text-slate-900">
+                    <td className="py-3.5 px-6 text-[#737983] font-mono text-[11px]">
+                      {e.orderNumber || '—'}
+                    </td>
+                    <td className="py-3.5 px-6 text-right font-bold text-[#17191C] tabular-nums">
                       {formatINR(e.amount)}
                     </td>
-                    <td className="py-3.5 px-4 text-center">
+                    <td className="py-3.5 px-6 text-right">
                       <button
-                        onClick={() => handleDelete(e.id)}
-                        className="p-1.5 text-slate-400 hover:text-red-600 rounded-lg hover:bg-red-50"
+                        onClick={() => setDeleteExpenseId(e.id || (e as any)._id)}
+                        className="p-1.5 text-[#737983] hover:text-[#C84B4B] rounded-lg hover:bg-[#FDF2F2] transition-colors"
                         title="Delete expense"
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </td>
                   </tr>
@@ -178,93 +209,100 @@ export const ExpensesListPage: React.FC = () => {
         </div>
       )}
 
-      {/* Modal */}
+      {/* Record Expense Modal */}
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title="Record Operating Expense"
-        subtitle="Log advertising, software, packaging or overhead spend"
+        title="Record Operating Outflow"
+        subtitle="Deduct store operating expenses directly against net business profits"
         maxWidth="md"
       >
-        <form onSubmit={handleCreateExpense} className="space-y-4 text-xs">
+        <form onSubmit={handleCreateExpense} className="space-y-4">
           <div>
-            <label className="block font-bold uppercase tracking-wider text-slate-600 mb-1">
+            <label className="block text-[11px] font-bold uppercase tracking-wider text-[#737983] mb-1">
               Expense Category
             </label>
             <select
               value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white"
+              onChange={(e) => setCategory(e.target.value as any)}
+              className="w-full px-3 py-2 border border-[#E7E9ED] rounded-lg text-xs bg-white text-[#17191C] font-medium focus:outline-none focus:border-[#176B57]"
             >
-              <option value="advertising">Advertising (Meta / Google Ads)</option>
-              <option value="packaging">Packaging & Shipping Boxes</option>
-              <option value="software">Software & SaaS Subscriptions</option>
-              <option value="operations">Warehouse & Operational Expenses</option>
-              <option value="salaries">Salaries & Contractor Fees</option>
-              <option value="other">Other Store Overhead</option>
+              <option value="advertising">Advertising / Meta / Google Ads</option>
+              <option value="packaging">Boxes, Bubble Wrap & Mailers</option>
+              <option value="software">Shopify, Tools & SaaS Apps</option>
+              <option value="operations">Warehouse Rent & Utilities</option>
+              <option value="salaries">Store Staff Salaries</option>
+              <option value="shipping">General Shipping Freight</option>
+              <option value="other">Miscellaneous Overhead</option>
             </select>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block font-bold uppercase tracking-wider text-slate-600 mb-1">
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-[#737983] mb-1">
                 Amount (₹)
               </label>
               <input
                 type="number"
-                min="0.01"
+                min="0"
                 step="any"
                 required
                 value={amount}
                 onChange={(e) => setAmount(Number(e.target.value))}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+                className="w-full px-3 py-2 border border-[#E7E9ED] rounded-lg text-xs font-bold text-[#17191C] tabular-nums focus:outline-none focus:border-[#176B57]"
               />
             </div>
 
             <div>
-              <label className="block font-bold uppercase tracking-wider text-slate-600 mb-1">
-                Date Incurred
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-[#737983] mb-1">
+                Date
               </label>
               <input
                 type="date"
                 required
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+                className="w-full px-3 py-2 border border-[#E7E9ED] rounded-lg text-xs text-[#17191C] focus:outline-none focus:border-[#176B57]"
               />
             </div>
           </div>
 
           <div>
-            <label className="block font-bold uppercase tracking-wider text-slate-600 mb-1">
-              Description / Vendor
+            <label className="block text-[11px] font-bold uppercase tracking-wider text-[#737983] mb-1">
+              Memo / Description
             </label>
             <input
               type="text"
               required
+              placeholder="e.g. Meta Ads campaign for Summer Sale"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="e.g. Meta Advantage+ catalog ad campaign"
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+              className="w-full px-3 py-2 border border-[#E7E9ED] rounded-lg text-xs text-[#17191C] focus:outline-none focus:border-[#176B57]"
             />
           </div>
 
-          <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-[11px] text-slate-600">
-            <strong>Double-Counting Prevention:</strong> Store overhead is aggregated at the store
-            P&L level. Specific order-level costs (e.g. order-attributed ad cost) are isolated to avoid
-            duplication.
-          </div>
-
-          <div className="flex justify-end gap-2 pt-3 border-t border-slate-200">
-            <Button variant="outline" type="button" onClick={() => setIsModalOpen(false)}>
+          <div className="flex justify-end gap-2.5 pt-3 border-t border-[#E7E9ED]">
+            <Button variant="outline" size="sm" type="button" onClick={() => setIsModalOpen(false)}>
               Cancel
             </Button>
-            <Button variant="primary" type="submit" loading={modalLoading}>
+            <Button variant="primary" size="sm" type="submit" loading={modalLoading}>
               Save Expense
             </Button>
           </div>
         </form>
       </Modal>
+
+      {/* Accessible Confirm Dialog */}
+      <ConfirmDialog
+        isOpen={!!deleteExpenseId}
+        onClose={() => setDeleteExpenseId(null)}
+        onConfirm={handleConfirmDelete}
+        title="Delete Expense Entry"
+        message="Are you sure you want to delete this operating expense? It will be removed from your profit & loss statements."
+        confirmLabel="Delete Expense"
+        loading={isDeleting}
+        isDestructive={true}
+      />
     </div>
   );
 };

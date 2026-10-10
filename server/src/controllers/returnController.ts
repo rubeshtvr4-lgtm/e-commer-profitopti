@@ -9,6 +9,7 @@ export async function listReturns(req: AuthenticatedRequest, res: Response): Pro
   const ownerId = req.ownerId!;
   const page = Math.max(1, parseInt(req.query.page as string) || 1);
   const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 20));
+  const search = (req.query.search as string || '').trim();
   const status = (req.query.status as string || '').trim();
   const condition = (req.query.condition as string || '').trim();
   const recoveryStatus = (req.query.recoveryStatus as string || '').trim();
@@ -18,6 +19,13 @@ export async function listReturns(req: AuthenticatedRequest, res: Response): Pro
   if (condition && condition !== 'all') filter.returnedCondition = condition;
   if (recoveryStatus && recoveryStatus !== 'all')
     filter.inventoryRecoveryStatus = recoveryStatus;
+  if (search) {
+    filter.$or = [
+      { returnReason: { $regex: search, $options: 'i' } },
+      { 'returnedItems.sku': { $regex: search, $options: 'i' } },
+      { 'returnedItems.name': { $regex: search, $options: 'i' } },
+    ];
+  }
 
   const [total, returns] = await Promise.all([
     Return.countDocuments(filter),

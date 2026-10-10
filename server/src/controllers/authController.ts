@@ -148,6 +148,7 @@ export async function forgotPassword(req: Request, res: Response): Promise<void>
     userId: user._id,
     tokenHash,
     expiresAt: new Date(Date.now() + 60 * 60 * 1000), // 1 hour
+    used: false,
   });
 
   res.json({

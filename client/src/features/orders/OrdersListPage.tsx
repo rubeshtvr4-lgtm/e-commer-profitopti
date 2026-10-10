@@ -3,7 +3,6 @@ import {
   ShoppingCart,
   Plus,
   Search,
-  Filter,
   Eye,
   ChevronLeft,
   ChevronRight,
@@ -14,11 +13,16 @@ import { Order, Pagination } from '../../types';
 import { formatINR } from '../../lib/currency';
 import { Button } from '../../components/ui/Button';
 import { ProfitBadge } from '../../components/common/ProfitBadge';
+import { StatusBadge } from '../../components/common/StatusBadge';
+import { PageHeader } from '../../components/common/PageHeader';
 import { EmptyState } from '../../components/common/EmptyState';
 import { OrderDetailModal } from './OrderDetailModal';
 import { CreateOrderModal } from './CreateOrderModal';
+import { CreateReturnModal } from '../returns/CreateReturnModal';
+import { useToast } from '../../contexts/ToastContext';
 
 export const OrdersListPage: React.FC = () => {
+  const { success, error: toastError } = useToast();
   const [orders, setOrders] = useState<Order[]>([]);
   const [pagination, setPagination] = useState<Pagination>({
     page: 1,
@@ -35,6 +39,8 @@ export const OrdersListPage: React.FC = () => {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [returnOrder, setReturnOrder] = useState<Order | null>(null);
+  const [isReturnOpen, setIsReturnOpen] = useState(false);
 
   const fetchOrders = async (page = 1) => {
     try {
@@ -71,26 +77,23 @@ export const OrdersListPage: React.FC = () => {
   const handleStatusChange = async (orderId: string, newStatus: string) => {
     try {
       await api.patch(`/orders/${orderId}/status`, { status: newStatus });
+      success('Order Status Updated', `Status changed to ${newStatus}.`);
       fetchOrders(pagination.page);
-      if (selectedOrder && selectedOrder.id === orderId) {
+      if (selectedOrder && (selectedOrder.id === orderId || (selectedOrder as any)._id === orderId)) {
         setSelectedOrder({ ...selectedOrder, status: newStatus as any });
       }
-    } catch (err) {
-      console.error('Failed to update status', err);
+    } catch (err: any) {
+      toastError('Update Failed', err?.message || 'Could not update status');
     }
   };
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-xl font-bold text-slate-900 tracking-tight">Orders & Line Item P&L</h2>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Realized profits calculated on an individual order unit economics basis
-          </p>
-        </div>
-
+      <PageHeader
+        title="Order Management & Unit Economics"
+        description="Realized profits calculated on an individual order unit economics basis"
+      >
         <Button
           variant="primary"
           onClick={() => setIsCreateOpen(true)}
@@ -98,26 +101,26 @@ export const OrdersListPage: React.FC = () => {
         >
           New Order
         </Button>
-      </div>
+      </PageHeader>
 
       {/* Filter and Search Bar */}
-      <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-xs flex flex-col md:flex-row items-center justify-between gap-3">
+      <div className="bg-white p-3.5 sm:p-4 rounded-xl border border-[#E7E9ED] shadow-[0_1px_2px_rgba(0,0,0,0.02)] flex flex-col md:flex-row items-center justify-between gap-3">
         <form onSubmit={handleSearchSubmit} className="relative w-full md:w-80">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+          <Search className="w-4 h-4 text-[#737983] absolute left-3 top-2.5" />
           <input
             type="text"
-            placeholder="Search order number or customer..."
+            placeholder="Search order # or customer..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-3 py-1.5 border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-brand-500"
+            className="w-full pl-9 pr-3 py-1.5 border border-[#E7E9ED] rounded-lg text-xs text-[#17191C] focus:outline-none focus:border-[#176B57] focus:ring-2 focus:ring-[#176B57]/10"
           />
         </form>
 
-        <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+        <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto">
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="text-xs font-medium px-3 py-1.5 border border-slate-300 rounded-lg bg-white text-slate-700"
+            className="text-xs font-medium px-3 py-1.5 border border-[#E7E9ED] rounded-lg bg-white text-[#17191C] focus:outline-none focus:border-[#176B57]"
           >
             <option value="all">All Statuses</option>
             <option value="delivered">Delivered</option>
@@ -131,7 +134,7 @@ export const OrdersListPage: React.FC = () => {
           <select
             value={channelFilter}
             onChange={(e) => setChannelFilter(e.target.value)}
-            className="text-xs font-medium px-3 py-1.5 border border-slate-300 rounded-lg bg-white text-slate-700"
+            className="text-xs font-medium px-3 py-1.5 border border-[#E7E9ED] rounded-lg bg-white text-[#17191C] focus:outline-none focus:border-[#176B57]"
           >
             <option value="all">All Channels</option>
             <option value="website">Website</option>
@@ -145,37 +148,37 @@ export const OrdersListPage: React.FC = () => {
 
       {/* Orders Table */}
       {loading ? (
-        <div className="bg-white p-8 rounded-2xl border border-slate-200 text-center animate-pulse">
-          <div className="h-6 bg-slate-200 rounded w-1/3 mx-auto mb-4" />
-          <div className="h-4 bg-slate-200 rounded w-1/2 mx-auto" />
+        <div className="bg-white p-12 rounded-2xl border border-[#E7E9ED] text-center animate-pulse">
+          <div className="h-6 bg-[#E7E9ED] rounded w-1/4 mx-auto mb-3" />
+          <div className="h-4 bg-[#E7E9ED] rounded w-1/3 mx-auto" />
         </div>
       ) : orders.length === 0 ? (
         <EmptyState
-          icon={<ShoppingCart className="w-10 h-10 text-brand-600" />}
+          icon={<ShoppingCart className="w-8 h-8 text-[#176B57]" />}
           title="No Orders Found"
-          description="No orders match your filter criteria. Create a new order or seed demo store data."
+          description="No orders match your filter criteria. Create a new order or seed realistic demo data."
           actionLabel="Create Order"
           onAction={() => setIsCreateOpen(true)}
           showSeedDemo={true}
         />
       ) : (
-        <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm overflow-hidden">
+        <div className="bg-white border border-[#E7E9ED] rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.02)] overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50 text-slate-500 uppercase tracking-wider font-semibold border-b border-slate-200">
+              <thead className="bg-[#F7F8FA] text-[#737983] uppercase tracking-wider font-semibold border-b border-[#E7E9ED]">
                 <tr>
                   <th className="py-3 px-4">Order #</th>
                   <th className="py-3 px-4">Date</th>
                   <th className="py-3 px-4">Customer</th>
                   <th className="py-3 px-4">Channel</th>
-                  <th className="py-3 px-4">Items</th>
+                  <th className="py-3 px-4 text-center">Items</th>
                   <th className="py-3 px-4">Status</th>
                   <th className="py-3 px-4 text-right">Net Revenue</th>
                   <th className="py-3 px-4 text-right">Net Profit</th>
                   <th className="py-3 px-4 text-center">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-[#E7E9ED]">
                 {orders.map((ord) => (
                   <tr
                     key={ord.id}
@@ -183,44 +186,32 @@ export const OrdersListPage: React.FC = () => {
                       setSelectedOrder(ord);
                       setIsDetailOpen(true);
                     }}
-                    className="hover:bg-slate-50/70 cursor-pointer transition-colors"
+                    className="hover:bg-[#F7F8FA]/60 cursor-pointer transition-colors"
                   >
-                    <td className="py-3 px-4 font-mono font-bold text-slate-900">
+                    <td className="py-3 px-4 font-mono font-bold text-[#17191C]">
                       {ord.orderNumber}
                     </td>
-                    <td className="py-3 px-4 text-slate-500">
+                    <td className="py-3 px-4 text-[#737983]">
                       {new Date(ord.orderDate).toLocaleDateString('en-IN', {
                         month: 'short',
                         day: 'numeric',
                       })}
                     </td>
-                    <td className="py-3 px-4 font-medium text-slate-800">
+                    <td className="py-3 px-4 font-semibold text-[#17191C]">
                       {ord.customer?.name || 'Anonymous'}
                     </td>
                     <td className="py-3 px-4">
-                      <span className="capitalize px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-medium">
+                      <span className="capitalize px-2 py-0.5 rounded bg-[#F1F3F6] text-[#555C68] font-medium text-[11px] border border-[#E7E9ED]">
                         {ord.channel}
                       </span>
                     </td>
-                    <td className="py-3 px-4 text-slate-600 font-medium">
-                      {ord.items.reduce((s, i) => s + i.quantity, 0)} pcs
+                    <td className="py-3 px-4 text-center text-[#555C68] font-semibold tabular-nums">
+                      {ord.items.reduce((s, i) => s + i.quantity, 0)}
                     </td>
                     <td className="py-3 px-4">
-                      <span
-                        className={`capitalize px-2 py-0.5 rounded-full text-[11px] font-semibold ${
-                          ord.status === 'delivered'
-                            ? 'bg-emerald-50 text-emerald-700'
-                            : ord.status === 'returned'
-                            ? 'bg-red-50 text-red-700'
-                            : ord.status === 'cancelled'
-                            ? 'bg-slate-100 text-slate-600'
-                            : 'bg-sky-50 text-sky-700'
-                        }`}
-                      >
-                        {ord.status}
-                      </span>
+                      <StatusBadge status={ord.status} type="order" />
                     </td>
-                    <td className="py-3 px-4 text-right font-semibold text-slate-900">
+                    <td className="py-3 px-4 text-right font-bold text-[#17191C] tabular-nums">
                       {formatINR(ord.financials?.netRevenue)}
                     </td>
                     <td className="py-3 px-4 text-right">
@@ -239,7 +230,8 @@ export const OrdersListPage: React.FC = () => {
                           setSelectedOrder(ord);
                           setIsDetailOpen(true);
                         }}
-                        className="p-1.5 text-slate-400 hover:text-slate-800 rounded-lg hover:bg-slate-100"
+                        className="p-1.5 text-[#737983] hover:text-[#17191C] rounded-lg hover:bg-[#F1F3F6] transition-colors"
+                        title="View order economics"
                       >
                         <Eye className="w-4 h-4" />
                       </button>
@@ -250,30 +242,32 @@ export const OrdersListPage: React.FC = () => {
             </table>
           </div>
 
-          {/* Pagination */}
-          <div className="px-6 py-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+          {/* Pagination Toolbar */}
+          <div className="px-6 py-3.5 bg-[#F7F8FA] border-t border-[#E7E9ED] flex items-center justify-between text-xs text-[#737983]">
             <span>
               Showing {orders.length} of {pagination.total} orders
             </span>
             <div className="flex items-center gap-2">
               <Button
                 variant="outline"
-                size="sm"
+                size="xs"
                 disabled={pagination.page <= 1}
                 onClick={() => fetchOrders(pagination.page - 1)}
+                icon={<ChevronLeft className="w-3.5 h-3.5" />}
               >
-                <ChevronLeft className="w-3.5 h-3.5" />
+                Prev
               </Button>
-              <span className="font-semibold text-slate-700">
+              <span className="font-semibold text-[#17191C]">
                 Page {pagination.page} of {pagination.totalPages || 1}
               </span>
               <Button
                 variant="outline"
-                size="sm"
+                size="xs"
                 disabled={pagination.page >= pagination.totalPages}
                 onClick={() => fetchOrders(pagination.page + 1)}
+                icon={<ChevronRight className="w-3.5 h-3.5" />}
               >
-                <ChevronRight className="w-3.5 h-3.5" />
+                Next
               </Button>
             </div>
           </div>
@@ -286,13 +280,23 @@ export const OrdersListPage: React.FC = () => {
         isOpen={isDetailOpen}
         onClose={() => setIsDetailOpen(false)}
         onStatusChange={handleStatusChange}
-        onRecordReturn={() => (window.location.href = '/returns')}
+        onRecordReturn={(ord) => {
+          setReturnOrder(ord);
+          setIsReturnOpen(true);
+        }}
       />
 
       <CreateOrderModal
         isOpen={isCreateOpen}
         onClose={() => setIsCreateOpen(false)}
         onSuccess={() => fetchOrders(1)}
+      />
+
+      <CreateReturnModal
+        isOpen={isReturnOpen}
+        initialOrder={returnOrder}
+        onClose={() => setIsReturnOpen(false)}
+        onSuccess={() => fetchOrders(pagination.page)}
       />
     </div>
   );

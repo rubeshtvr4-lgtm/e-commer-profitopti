@@ -70,8 +70,12 @@ class MemoryCollection {
   public async findOne(filter: any = {}) {
     const matches = this.applyFilter(filter);
     if (matches.length === 0) return null;
-    const doc = { ...matches[0] };
+    const target = matches[0];
+    const doc = { ...target };
     doc.save = async function () {
+      Object.assign(target, this);
+      this.updatedAt = new Date();
+      target.updatedAt = this.updatedAt;
       return this;
     };
     doc.toJSON = function () {
@@ -178,8 +182,11 @@ class MemoryCollection {
           if (!regex.test(String(docVal || ''))) return false;
           continue;
         }
-        if ((val as any).$gte !== undefined && docVal < (val as any).$gte) return false;
-        if ((val as any).$lte !== undefined && docVal > (val as any).$lte) return false;
+        const toTimestamp = (x: any) => (x instanceof Date ? x.getTime() : x);
+        if ((val as any).$gt !== undefined && toTimestamp(docVal) <= toTimestamp((val as any).$gt)) return false;
+        if ((val as any).$lt !== undefined && toTimestamp(docVal) >= toTimestamp((val as any).$lt)) return false;
+        if ((val as any).$gte !== undefined && toTimestamp(docVal) < toTimestamp((val as any).$gte)) return false;
+        if ((val as any).$lte !== undefined && toTimestamp(docVal) > toTimestamp((val as any).$lte)) return false;
         continue;
       }
 

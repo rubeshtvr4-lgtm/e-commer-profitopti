@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Zap, AlertCircle, CheckCircle2, ArrowLeft } from 'lucide-react';
+import { TrendingUp, AlertCircle, CheckCircle2, ArrowLeft, Mail } from 'lucide-react';
 import { api } from '../../lib/apiClient';
 import { Button } from '../../components/ui/Button';
 
@@ -30,41 +30,45 @@ export const ForgotPasswordPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-900 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-[#F7F8FA] flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8 text-[#17191C]">
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
-        <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-brand-600 to-emerald-500 mx-auto flex items-center justify-center text-white shadow-lg">
-          <Zap className="w-6 h-6 fill-current" />
-        </div>
-        <h2 className="mt-4 text-3xl font-extrabold text-white">Reset Password</h2>
-        <p className="mt-2 text-sm text-slate-400">
-          Enter your email to receive recovery instructions
+        <Link to="/welcome" className="inline-flex items-center gap-2 group mb-3">
+          <div className="w-10 h-10 rounded-xl bg-[#EAF5F0] border border-[#D2ECE1] flex items-center justify-center text-[#176B57] transition-transform group-hover:scale-105">
+            <TrendingUp className="w-5 h-5 stroke-[2.5]" />
+          </div>
+        </Link>
+        <h2 className="text-2xl sm:text-3xl font-extrabold text-[#17191C] tracking-tight">
+          Reset Password
+        </h2>
+        <p className="mt-1.5 text-xs sm:text-sm text-[#737983] font-medium">
+          Enter your registered merchant email to receive recovery instructions
         </p>
       </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-6 shadow-xl rounded-2xl sm:px-10 border border-slate-200">
+      <div className="mt-7 sm:mx-auto sm:w-full sm:max-w-md">
+        <div className="bg-white py-8 px-6 shadow-[0_4px_25px_-5px_rgba(0,0,0,0.04)] rounded-2xl sm:px-8 border border-[#E7E9ED]">
           {error && (
-            <div className="mb-5 p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm flex items-start gap-2.5">
-              <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5 text-red-600" />
+            <div className="mb-5 p-3 rounded-xl bg-[#FDF2F2] border border-[#FCE4E4] text-[#C84B4B] text-xs flex items-start gap-2.5 font-medium">
+              <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
               <span>{error}</span>
             </div>
           )}
 
           {message && (
-            <div className="mb-5 p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm">
-              <div className="flex items-center gap-2 font-semibold mb-1">
-                <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+            <div className="mb-5 p-4 rounded-xl bg-[#EAF5F0] border border-[#D2ECE1] text-[#16835D] text-xs">
+              <div className="flex items-center gap-2 font-bold mb-1">
+                <CheckCircle2 className="w-4 h-4 text-[#16835D]" />
                 <span>{message}</span>
               </div>
               {resetToken && (
-                <div className="mt-3 p-3 bg-white rounded-lg border border-emerald-200 text-xs">
-                  <p className="font-semibold text-slate-700 mb-1">Demo Recovery Token:</p>
-                  <code className="bg-slate-100 p-1 rounded font-mono text-[11px] break-all select-all block text-slate-900">
+                <div className="mt-3 p-3 bg-white rounded-lg border border-[#D2ECE1] text-xs">
+                  <p className="font-semibold text-[#17191C] mb-1">Demo Recovery Token:</p>
+                  <code className="bg-[#F7F8FA] p-1.5 rounded font-mono text-[11px] break-all select-all block text-[#17191C] border border-[#E7E9ED]">
                     {resetToken}
                   </code>
                   <Link
                     to={`/reset-password?token=${resetToken}`}
-                    className="mt-2 inline-block font-bold text-emerald-700 underline"
+                    className="mt-2.5 inline-block font-bold text-[#176B57] hover:underline"
                   >
                     Click here to set new password &rarr;
                   </Link>
@@ -73,30 +77,30 @@ export const ForgotPasswordPage: React.FC = () => {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4 text-xs">
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">
-                Your Email Address
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-[#737983] mb-1">
+                Merchant Email Address
               </label>
               <input
                 type="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="seller@brand.com"
-                className="w-full px-3.5 py-2.5 border border-slate-300 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500"
+                placeholder="seller@yourbrand.com"
+                className="w-full px-3.5 py-2.5 border border-[#E7E9ED] rounded-lg text-xs text-[#17191C] font-semibold focus:outline-none focus:border-[#176B57] focus:ring-2 focus:ring-[#176B57]/10"
               />
             </div>
 
-            <Button type="submit" loading={loading} className="w-full mt-2" size="lg">
+            <Button type="submit" loading={loading} className="w-full mt-2" size="md">
               Send Reset Instructions
             </Button>
           </form>
 
-          <div className="mt-6 text-center text-xs text-slate-500 border-t border-slate-100 pt-5">
+          <div className="mt-6 text-center text-xs text-[#737983] border-t border-[#E7E9ED] pt-4">
             <Link
               to="/login"
-              className="inline-flex items-center gap-1 font-semibold text-brand-600 hover:text-brand-700"
+              className="inline-flex items-center gap-1.5 font-bold text-[#176B57] hover:underline"
             >
               <ArrowLeft className="w-3.5 h-3.5" /> Back to sign in
             </Link>

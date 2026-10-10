@@ -2,8 +2,8 @@ import React from 'react';
 import { Loader2 } from 'lucide-react';
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'danger' | 'outline' | 'ghost' | 'emerald';
-  size?: 'sm' | 'md' | 'lg';
+  variant?: 'primary' | 'dark' | 'secondary' | 'danger' | 'outline' | 'ghost' | 'emerald';
+  size?: 'xs' | 'sm' | 'md' | 'lg';
   loading?: boolean;
   icon?: React.ReactNode;
 }
@@ -19,21 +19,30 @@ export const Button: React.FC<ButtonProps> = ({
   ...props
 }) => {
   const baseStyles =
-    'inline-flex items-center justify-center font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none';
+    'inline-flex items-center justify-center font-medium rounded-lg transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-offset-1 disabled:opacity-50 disabled:pointer-events-none select-none active:scale-[0.99]';
 
   const sizeStyles = {
-    sm: 'text-xs px-2.5 py-1.5 gap-1.5',
-    md: 'text-sm px-4 py-2 gap-2',
-    lg: 'text-base px-5 py-2.5 gap-2.5',
+    xs: 'text-[11px] px-2 py-1 gap-1.5',
+    sm: 'text-xs px-3 py-1.5 gap-1.5',
+    md: 'text-xs sm:text-sm px-3.5 py-2 gap-2',
+    lg: 'text-sm sm:text-base px-5 py-2.5 gap-2.5',
   };
 
   const variantStyles = {
-    primary: 'bg-brand-600 text-white hover:bg-brand-700 focus:ring-brand-500 shadow-sm',
-    emerald: 'bg-emerald-600 text-white hover:bg-emerald-700 focus:ring-emerald-500 shadow-sm',
-    secondary: 'bg-slate-100 text-slate-800 hover:bg-slate-200 focus:ring-slate-400',
-    danger: 'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500 shadow-sm',
-    outline: 'border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 focus:ring-brand-500',
-    ghost: 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 focus:ring-slate-400',
+    primary:
+      'bg-[#176B57] text-white hover:bg-[#125645] focus:ring-[#176B57]/30 shadow-[0_1px_2px_rgba(23,107,87,0.15)]',
+    dark:
+      'bg-[#17191C] text-white hover:bg-[#2A2E33] focus:ring-[#17191C]/30 shadow-[0_1px_2px_rgba(0,0,0,0.1)]',
+    emerald:
+      'bg-[#16835D] text-white hover:bg-[#126B4C] focus:ring-[#16835D]/30 shadow-[0_1px_2px_rgba(22,131,93,0.15)]',
+    secondary:
+      'bg-[#F1F3F6] text-[#17191C] hover:bg-[#E5E8EC] focus:ring-[#737983]/30',
+    danger:
+      'bg-[#C84B4B] text-white hover:bg-[#B33E3E] focus:ring-[#C84B4B]/30 shadow-[0_1px_2px_rgba(200,75,75,0.15)]',
+    outline:
+      'border border-[#E7E9ED] bg-white text-[#17191C] hover:bg-[#F7F8FA] hover:border-[#D1D5DB] focus:ring-[#176B57]/20 shadow-[0_1px_2px_rgba(0,0,0,0.02)]',
+    ghost:
+      'text-[#555C68] hover:text-[#17191C] hover:bg-[#F1F3F6] focus:ring-[#737983]/20',
   };
 
   return (
@@ -42,7 +51,7 @@ export const Button: React.FC<ButtonProps> = ({
       disabled={disabled || loading}
       {...props}
     >
-      {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : icon}
+      {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : icon}
       {children}
     </button>
   );

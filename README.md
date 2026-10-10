@@ -107,21 +107,31 @@ Visit **[http://localhost:5173](http://localhost:5173)** in your browser.
 
 ## 🧪 Automated Test Results
 
-Run the automated test suite covering financial logic, authentication security, and multi-tenant seller isolation:
+Run the comprehensive automated test suite covering financial unit economics, stock decrement/restock lifecycle, authentication security, multi-tenant seller isolation, logistics, and client formatting:
 
 ```bash
+# Run complete monorepo test suites (server + client)
+npm test
+
+# Or run server integration tests individually
 npm run test:server
 ```
 
-### Verified Test Results:
+### Verified Test Results (42 Automated Tests Passing):
 ```text
+> Server Tests:
 ✓ tests/financialEngine.test.ts (7 tests)
-✓ tests/api.test.ts (7 tests)
 ✓ tests/authorization.test.ts (7 tests)
+✓ tests/api.test.ts (7 tests)
+✓ tests/ordersAndReturns.test.ts (10 tests)
 ✓ tests/auth.test.ts (6 tests)
+Server: 5 test files, 37 passed (37)
 
-Test Files  4 passed (4)
-     Tests  27 passed (27)
+> Client Tests:
+✓ tests/currency.test.ts (5 tests)
+Client: 1 test file, 5 passed (5)
+
+Total: 6 test files, 42 passed (42)
 ```
 
 ---

@@ -3,12 +3,15 @@ import { Modal } from '../../components/ui/Modal';
 import { Button } from '../../components/ui/Button';
 import { Product } from '../../types';
 import { api } from '../../lib/apiClient';
+import { useToast } from '../../contexts/ToastContext';
+import { formatINR } from '../../lib/currency';
 
 interface ProductModalProps {
-  product: Product | null;
+  product?: Product | null;
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess?: () => void;
+  onSaved?: () => void;
 }
 
 export const ProductModal: React.FC<ProductModalProps> = ({
@@ -16,10 +19,12 @@ export const ProductModal: React.FC<ProductModalProps> = ({
   isOpen,
   onClose,
   onSuccess,
+  onSaved,
 }) => {
+  const { success, error: toastError } = useToast();
   const [name, setName] = useState('');
   const [sku, setSku] = useState('');
-  const [category, setCategory] = useState('General');
+  const [category, setCategory] = useState('Apparel');
   const [sellingPrice, setSellingPrice] = useState(999);
   const [unitCost, setUnitCost] = useState(350);
   const [stockQuantity, setStockQuantity] = useState(50);
@@ -31,7 +36,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
     if (product) {
       setName(product.name);
       setSku(product.SKU);
-      setCategory(product.category);
+      setCategory(product.category || 'General');
       setSellingPrice(product.sellingPrice);
       setUnitCost(product.unitCost);
       setStockQuantity(product.stockQuantity);
@@ -55,8 +60,8 @@ export const ProductModal: React.FC<ProductModalProps> = ({
     try {
       const payload = {
         name,
-        SKU: sku.toUpperCase(),
-        category,
+        SKU: sku.toUpperCase().trim(),
+        category: category.trim(),
         sellingPrice: Number(sellingPrice),
         unitCost: Number(unitCost),
         stockQuantity: Number(stockQuantity),
@@ -65,39 +70,45 @@ export const ProductModal: React.FC<ProductModalProps> = ({
 
       if (product) {
         await api.patch(`/products/${product.id || product._id}`, payload);
+        success('Product Updated', `${name} catalog data updated successfully.`);
       } else {
         await api.post('/products', payload);
+        success('Product Created', `${name} (${sku}) added to catalog.`);
       }
 
-      onSuccess();
+      if (onSuccess) onSuccess();
+      if (onSaved) onSaved();
       onClose();
     } catch (err: any) {
-      setError(err.message || 'Failed to save product');
+      const msg = err.message || 'Failed to save product';
+      setError(msg);
+      toastError('Save Error', msg);
     } finally {
       setLoading(false);
     }
   };
 
+  const profitPerUnit = sellingPrice - unitCost;
   const margin =
-    sellingPrice > 0 ? (((sellingPrice - unitCost) / sellingPrice) * 100).toFixed(1) : '0';
+    sellingPrice > 0 ? ((profitPerUnit / sellingPrice) * 100).toFixed(1) : '0';
 
   return (
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={product ? 'Edit Product' : 'Add New Inventory SKU'}
-      subtitle="Configure selling price and manufacturer unit cost economics"
+      title={product ? 'Edit Product SKU' : 'Add New Inventory SKU'}
+      subtitle="Configure target selling price and manufacturer unit cost economics"
       maxWidth="md"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         {error && (
-          <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg">
+          <div className="p-3 bg-[#FDF2F2] border border-[#FCE4E4] text-[#C84B4B] text-xs rounded-xl font-medium">
             {error}
           </div>
         )}
 
         <div>
-          <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">
+          <label className="block text-[11px] font-bold uppercase tracking-wider text-[#737983] mb-1">
             Product Title
           </label>
           <input
@@ -105,28 +116,28 @@ export const ProductModal: React.FC<ProductModalProps> = ({
             required
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="e.g. Vintage Heavyweight Tee"
-            className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs"
+            placeholder="e.g. Classic Oversized Hoodie"
+            className="w-full px-3 py-2 border border-[#E7E9ED] rounded-lg text-xs text-[#17191C] focus:outline-none focus:border-[#176B57] focus:ring-2 focus:ring-[#176B57]/10"
           />
         </div>
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">
-              SKU Code
+            <label className="block text-[11px] font-bold uppercase tracking-wider text-[#737983] mb-1">
+              SKU Identifier
             </label>
             <input
               type="text"
               required
               value={sku}
               onChange={(e) => setSku(e.target.value)}
-              placeholder="TEE-BLK-01"
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-mono uppercase"
+              placeholder="HOOD-OVR-01"
+              className="w-full px-3 py-2 border border-[#E7E9ED] rounded-lg text-xs font-mono uppercase text-[#17191C] focus:outline-none focus:border-[#176B57] focus:ring-2 focus:ring-[#176B57]/10"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">
+            <label className="block text-[11px] font-bold uppercase tracking-wider text-[#737983] mb-1">
               Category
             </label>
             <input
@@ -134,15 +145,15 @@ export const ProductModal: React.FC<ProductModalProps> = ({
               required
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              placeholder="Apparel, Footwear, etc."
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs"
+              placeholder="Apparel, Footwear..."
+              className="w-full px-3 py-2 border border-[#E7E9ED] rounded-lg text-xs text-[#17191C] focus:outline-none focus:border-[#176B57] focus:ring-2 focus:ring-[#176B57]/10"
             />
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">
+            <label className="block text-[11px] font-bold uppercase tracking-wider text-[#737983] mb-1">
               Selling Price (₹)
             </label>
             <input
@@ -152,12 +163,12 @@ export const ProductModal: React.FC<ProductModalProps> = ({
               required
               value={sellingPrice}
               onChange={(e) => setSellingPrice(Number(e.target.value))}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs"
+              className="w-full px-3 py-2 border border-[#E7E9ED] rounded-lg text-xs font-semibold text-[#17191C] tabular-nums focus:outline-none focus:border-[#176B57] focus:ring-2 focus:ring-[#176B57]/10"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">
+            <label className="block text-[11px] font-bold uppercase tracking-wider text-[#737983] mb-1">
               Unit Cost / COGS (₹)
             </label>
             <input
@@ -167,36 +178,38 @@ export const ProductModal: React.FC<ProductModalProps> = ({
               required
               value={unitCost}
               onChange={(e) => setUnitCost(Number(e.target.value))}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs text-slate-600"
+              className="w-full px-3 py-2 border border-[#E7E9ED] rounded-lg text-xs font-semibold text-[#737983] tabular-nums focus:outline-none focus:border-[#176B57] focus:ring-2 focus:ring-[#176B57]/10"
             />
           </div>
         </div>
 
-        {/* Live Profit Margin Preview */}
-        <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between text-xs">
+        {/* Live Profit Margin Calculator Preview */}
+        <div className="p-3 bg-[#F7F8FA] border border-[#E7E9ED] rounded-xl flex items-center justify-between text-xs">
           <div>
-            <span className="text-slate-500 font-medium">Projected Margin:</span>{' '}
+            <span className="text-[#737983] font-medium">Estimated Margin:</span>{' '}
             <span
-              className={`font-bold ${
-                Number(margin) >= 25
-                  ? 'text-emerald-700'
+              className={`font-bold ml-1 ${
+                Number(margin) >= 20
+                  ? 'text-[#16835D]'
                   : Number(margin) < 15
-                  ? 'text-red-700'
-                  : 'text-amber-700'
+                  ? 'text-[#C84B4B]'
+                  : 'text-[#D97706]'
               }`}
             >
               {margin}%
             </span>
           </div>
           <div>
-            <span className="text-slate-500 font-medium">Profit/Unit:</span>{' '}
-            <span className="font-bold text-slate-900">₹{(sellingPrice - unitCost).toFixed(2)}</span>
+            <span className="text-[#737983] font-medium">Unit Profit:</span>{' '}
+            <span className="font-bold text-[#17191C] tabular-nums ml-1">
+              {formatINR(profitPerUnit)}
+            </span>
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-3 items-center">
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">
+            <label className="block text-[11px] font-bold uppercase tracking-wider text-[#737983] mb-1">
               Initial Stock Units
             </label>
             <input
@@ -205,28 +218,28 @@ export const ProductModal: React.FC<ProductModalProps> = ({
               required
               value={stockQuantity}
               onChange={(e) => setStockQuantity(Number(e.target.value))}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs"
+              className="w-full px-3 py-2 border border-[#E7E9ED] rounded-lg text-xs font-semibold text-[#17191C] tabular-nums focus:outline-none focus:border-[#176B57] focus:ring-2 focus:ring-[#176B57]/10"
             />
           </div>
 
-          <div className="flex items-center pt-5">
-            <label className="flex items-center gap-2 cursor-pointer text-xs font-medium text-slate-700">
+          <div className="pt-5">
+            <label className="flex items-center gap-2 cursor-pointer text-xs font-medium text-[#17191C]">
               <input
                 type="checkbox"
                 checked={active}
                 onChange={(e) => setActive(e.target.checked)}
-                className="w-4 h-4 text-brand-600 rounded border-slate-300 focus:ring-brand-500"
+                className="w-4 h-4 text-[#176B57] rounded border-[#E7E9ED] focus:ring-[#176B57]"
               />
-              Active in catalog
+              Active in store catalog
             </label>
           </div>
         </div>
 
-        <div className="flex justify-end gap-2 pt-4 border-t border-slate-200">
-          <Button variant="outline" type="button" onClick={onClose}>
+        <div className="flex justify-end gap-2.5 pt-4 border-t border-[#E7E9ED]">
+          <Button variant="outline" size="sm" type="button" onClick={onClose}>
             Cancel
           </Button>
-          <Button variant="primary" type="submit" loading={loading}>
+          <Button variant="primary" size="sm" type="submit" loading={loading}>
             {product ? 'Update SKU' : 'Save Product'}
           </Button>
         </div>

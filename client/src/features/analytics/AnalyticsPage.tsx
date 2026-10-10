@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import {
   BarChart,
   Bar,
@@ -15,7 +16,9 @@ import {
 import { api } from '../../lib/apiClient';
 import { formatINR, formatPercent } from '../../lib/currency';
 import { Button } from '../../components/ui/Button';
-import { Download, Sparkles, TrendingUp, Layers } from 'lucide-react';
+import { PageHeader } from '../../components/common/PageHeader';
+import { ProfitBadge } from '../../components/common/ProfitBadge';
+import { Download, Sparkles, TrendingUp, Layers, ArrowUpRight } from 'lucide-react';
 
 export const AnalyticsPage: React.FC = () => {
   const [productStats, setProductStats] = useState<any[]>([]);
@@ -45,7 +48,16 @@ export const AnalyticsPage: React.FC = () => {
   }, []);
 
   if (loading) {
-    return <div className="h-96 bg-white rounded-2xl border border-slate-200 animate-pulse" />;
+    return (
+      <div className="space-y-6 max-w-7xl mx-auto animate-pulse">
+        <div className="h-8 bg-[#E7E9ED] rounded-lg w-64" />
+        <div className="h-80 bg-white rounded-2xl border border-[#E7E9ED]" />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="h-64 bg-white rounded-2xl border border-[#E7E9ED]" />
+          <div className="h-64 bg-white rounded-2xl border border-[#E7E9ED]" />
+        </div>
+      </div>
+    );
   }
 
   // Top products chart data
@@ -56,53 +68,70 @@ export const AnalyticsPage: React.FC = () => {
     margin: p.profitMargin,
   }));
 
-  const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#64748b'];
+  const COLORS = ['#176B57', '#0284C7', '#D97706', '#7C3AED', '#16835D', '#555C68'];
 
   return (
-    <div className="space-y-8 max-w-7xl mx-auto">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-xl font-bold text-slate-900 tracking-tight">Financial & SKU Analytics</h2>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Deep-dive profitability attribution across inventory lines, couriers, and overhead
-          </p>
-        </div>
-
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => (window.location.href = '/reports')}
-          icon={<Download className="w-4 h-4" />}
-        >
-          Export Reports
-        </Button>
-      </div>
+    <div className="space-y-7 max-w-7xl mx-auto">
+      {/* Header */}
+      <PageHeader
+        title="Financial & SKU Analytics"
+        description="Deep-dive profitability attribution across inventory lines, couriers, and overhead"
+      >
+        <Link to="/reports">
+          <Button
+            variant="outline"
+            size="sm"
+            icon={<Download className="w-4 h-4 text-[#555C68]" />}
+          >
+            Export Financial Statements
+          </Button>
+        </Link>
+      </PageHeader>
 
       {/* Top 7 Product Profitability Chart */}
-      <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm">
-        <div className="mb-4">
-          <h3 className="text-base font-bold text-slate-900">Top SKU Profitability Breakdown</h3>
-          <p className="text-xs text-slate-500">Gross Revenue vs Realized Net Profit by SKU</p>
+      <div className="bg-white border border-[#E7E9ED] rounded-2xl p-6 shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 mb-6">
+          <div>
+            <h3 className="text-base font-bold text-[#17191C] tracking-tight">
+              Top SKU Profitability Breakdown
+            </h3>
+            <p className="text-xs text-[#737983]">
+              Gross Revenue vs Realized Net Profit contribution per product line
+            </p>
+          </div>
+          <div className="flex items-center gap-3 text-xs">
+            <span className="flex items-center gap-1.5 text-[#555C68]">
+              <span className="w-3 h-3 rounded-xs bg-[#176B57]" /> Gross Revenue
+            </span>
+            <span className="flex items-center gap-1.5 text-[#555C68]">
+              <span className="w-3 h-3 rounded-xs bg-[#16835D]" /> Realized Net Profit
+            </span>
+          </div>
         </div>
 
         <div className="h-72 w-full">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={topProductsChartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-              <XAxis dataKey="name" stroke="#94a3b8" fontSize={11} tickLine={false} />
-              <YAxis stroke="#94a3b8" fontSize={11} tickLine={false} />
+              <CartesianGrid strokeDasharray="3 3" stroke="#F1F3F6" vertical={false} />
+              <XAxis dataKey="name" stroke="#9DA3AE" fontSize={11} tickLine={false} />
+              <YAxis
+                stroke="#9DA3AE"
+                fontSize={11}
+                tickLine={false}
+                tickFormatter={(v) => `₹${v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}`}
+              />
               <Tooltip
-                formatter={(val: any) => formatINR(Number(val))}
+                formatter={(val: any) => [formatINR(Number(val)), '']}
                 contentStyle={{
-                  backgroundColor: '#ffffff',
+                  backgroundColor: '#FFFFFF',
                   borderRadius: '12px',
-                  borderColor: '#e2e8f0',
+                  borderColor: '#E7E9ED',
                   fontSize: '12px',
+                  boxShadow: '0 8px 20px -4px rgba(0,0,0,0.08)',
                 }}
               />
-              <Legend />
-              <Bar dataKey="revenue" name="Gross Revenue" fill="#0284c7" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="profit" name="Net Profit" fill="#10b981" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="revenue" name="Gross Revenue" fill="#176B57" radius={[4, 4, 0, 0]} maxBarSize={34} />
+              <Bar dataKey="profit" name="Net Profit" fill="#16835D" radius={[4, 4, 0, 0]} maxBarSize={34} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -111,11 +140,13 @@ export const AnalyticsPage: React.FC = () => {
       {/* Return Rate & Category Breakdown 2-cols */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Expenses Breakdown */}
-        <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm flex flex-col justify-between">
+        <div className="bg-white border border-[#E7E9ED] rounded-2xl p-6 shadow-[0_1px_3px_rgba(0,0,0,0.02)] flex flex-col justify-between">
           <div>
-            <h3 className="text-base font-bold text-slate-900">Operating Overhead Allocation</h3>
-            <p className="text-xs text-slate-500">
-              Total Recorded Overhead: {formatINR(expenseStats?.totalExpenses || 0)}
+            <h3 className="text-base font-bold text-[#17191C] tracking-tight">
+              Operating Overhead Allocation
+            </h3>
+            <p className="text-xs text-[#737983]">
+              Total Recorded Overhead: <strong className="text-[#17191C]">{formatINR(expenseStats?.totalExpenses || 0)}</strong>
             </p>
           </div>
 
@@ -126,8 +157,9 @@ export const AnalyticsPage: React.FC = () => {
                   data={expenseStats?.categories || []}
                   cx="50%"
                   cy="50%"
-                  innerRadius={50}
-                  outerRadius={75}
+                  innerRadius={52}
+                  outerRadius={78}
+                  paddingAngle={4}
                   dataKey="amount"
                   nameKey="category"
                 >
@@ -140,41 +172,43 @@ export const AnalyticsPage: React.FC = () => {
             </ResponsiveContainer>
           </div>
 
-          <div className="grid grid-cols-2 gap-2 text-xs border-t border-slate-100 pt-3">
+          <div className="grid grid-cols-2 gap-2 text-xs border-t border-[#E7E9ED] pt-3">
             {(expenseStats?.categories || []).map((cat: any, idx: number) => (
               <div key={cat.category} className="flex items-center justify-between">
-                <span className="flex items-center gap-1.5 capitalize text-slate-600">
+                <span className="flex items-center gap-1.5 capitalize text-[#555C68]">
                   <span
                     className="w-2.5 h-2.5 rounded-full"
                     style={{ backgroundColor: COLORS[idx % COLORS.length] }}
                   />
                   {cat.category}
                 </span>
-                <span className="font-semibold text-slate-900">{formatINR(cat.amount)}</span>
+                <span className="font-semibold text-[#17191C] tabular-nums">{formatINR(cat.amount)}</span>
               </div>
             ))}
           </div>
         </div>
 
         {/* Return Reasons Breakdown */}
-        <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm flex flex-col justify-between">
+        <div className="bg-white border border-[#E7E9ED] rounded-2xl p-6 shadow-[0_1px_3px_rgba(0,0,0,0.02)] flex flex-col justify-between">
           <div>
-            <h3 className="text-base font-bold text-slate-900">Return Reasons Attribution</h3>
-            <p className="text-xs text-slate-500">
-              Total Refunds Paid: {formatINR(returnStats?.totalRefunds || 0)} • Reverse Courier Freight: {formatINR(returnStats?.totalReverseShipping || 0)}
+            <h3 className="text-base font-bold text-[#17191C] tracking-tight">
+              Return Reasons Attribution
+            </h3>
+            <p className="text-xs text-[#737983]">
+              Refunds: <strong className="text-[#C84B4B]">{formatINR(returnStats?.totalRefunds || 0)}</strong> • Reverse Freight: <strong className="text-[#D97706]">{formatINR(returnStats?.totalReverseShipping || 0)}</strong>
             </p>
           </div>
 
-          <div className="space-y-3 my-auto py-4">
+          <div className="space-y-3.5 my-auto py-4">
             {Object.entries(returnStats?.byReason || {}).map(([reason, count]: any) => (
               <div key={reason}>
-                <div className="flex justify-between text-xs font-semibold mb-1 text-slate-700">
+                <div className="flex justify-between text-xs font-semibold mb-1 text-[#17191C]">
                   <span>{reason}</span>
-                  <span>{count} orders</span>
+                  <span className="text-[#737983]">{count} orders</span>
                 </div>
-                <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                <div className="w-full h-2 bg-[#F1F3F6] rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-amber-500 rounded-full"
+                    className="h-full bg-[#176B57] rounded-full"
                     style={{
                       width: `${Math.min(100, (count / (returnStats?.totalReturns || 1)) * 100)}%`,
                     }}
@@ -183,15 +217,15 @@ export const AnalyticsPage: React.FC = () => {
               </div>
             ))}
             {Object.keys(returnStats?.byReason || {}).length === 0 && (
-              <p className="text-xs text-slate-400 text-center py-8">
+              <p className="text-xs text-[#737983] text-center py-8">
                 No returns logged in this period.
               </p>
             )}
           </div>
 
-          <div className="border-t border-slate-100 pt-3 text-xs text-slate-500 flex justify-between">
+          <div className="border-t border-[#E7E9ED] pt-3 text-xs text-[#737983] flex justify-between">
             <span>Inspection Status:</span>
-            <span className="font-semibold text-slate-800">
+            <span className="font-semibold text-[#17191C]">
               {returnStats?.byRecoveryStatus?.restocked || 0} Restocked /{' '}
               {returnStats?.byRecoveryStatus?.damaged_written_off || 0} Written Off
             </span>
@@ -200,66 +234,58 @@ export const AnalyticsPage: React.FC = () => {
       </div>
 
       {/* Product Profitability Rankings Table */}
-      <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm overflow-hidden">
-        <div className="px-6 py-4 border-b border-slate-100">
-          <h3 className="text-base font-bold text-slate-900">Product Profitability League Table</h3>
-          <p className="text-xs text-slate-500">Ranked by total realized net profit contribution</p>
+      <div className="bg-white border border-[#E7E9ED] rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.02)] overflow-hidden">
+        <div className="px-6 py-4 border-b border-[#E7E9ED]">
+          <h3 className="text-base font-bold text-[#17191C] tracking-tight">
+            Product Profitability League Table
+          </h3>
+          <p className="text-xs text-[#737983]">Ranked by total realized net profit contribution</p>
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
-            <thead className="bg-slate-50 text-slate-500 uppercase tracking-wider font-semibold border-b border-slate-200">
+            <thead className="bg-[#F7F8FA] text-[#737983] uppercase tracking-wider font-semibold border-b border-[#E7E9ED]">
               <tr>
-                <th className="py-3 px-4">SKU</th>
-                <th className="py-3 px-4">Product Name</th>
-                <th className="py-3 px-4 text-center">Units Sold</th>
-                <th className="py-3 px-4 text-center">Return Rate</th>
-                <th className="py-3 px-4 text-right">Gross Revenue</th>
-                <th className="py-3 px-4 text-right">Total Cost</th>
-                <th className="py-3 px-4 text-right">Net Profit</th>
-                <th className="py-3 px-4 text-right">Profit Margin</th>
+                <th className="py-3 px-6">SKU Code</th>
+                <th className="py-3 px-6">Product Title</th>
+                <th className="py-3 px-6 text-center">Units Sold</th>
+                <th className="py-3 px-6 text-center">Return Rate</th>
+                <th className="py-3 px-6 text-right">Gross Revenue</th>
+                <th className="py-3 px-6 text-right">Total Cost</th>
+                <th className="py-3 px-6 text-right">Net Profit</th>
+                <th className="py-3 px-6 text-right">Margin %</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-[#E7E9ED]">
               {productStats.map((p) => (
-                <tr key={p.id} className="hover:bg-slate-50/70 transition-colors">
-                  <td className="py-3.5 px-4 font-mono font-bold text-slate-900">{p.SKU}</td>
-                  <td className="py-3.5 px-4 font-semibold text-slate-800">{p.name}</td>
-                  <td className="py-3.5 px-4 text-center font-semibold text-slate-700">
+                <tr key={p.id} className="hover:bg-[#F7F8FA]/60 transition-colors">
+                  <td className="py-3.5 px-6 font-mono font-bold text-[#17191C]">{p.SKU}</td>
+                  <td className="py-3.5 px-6 font-semibold text-[#17191C]">{p.name}</td>
+                  <td className="py-3.5 px-6 text-center font-semibold text-[#555C68] tabular-nums">
                     {p.unitsSold} pcs
                   </td>
-                  <td className="py-3.5 px-4 text-center">
+                  <td className="py-3.5 px-6 text-center">
                     <span
-                      className={`px-2 py-0.5 rounded text-[11px] font-semibold ${
+                      className={`px-2 py-0.5 rounded text-[11px] font-semibold tabular-nums border ${
                         p.returnRate > 15
-                          ? 'bg-red-50 text-red-700 font-bold'
-                          : 'bg-slate-100 text-slate-700'
+                          ? 'bg-[#FDF2F2] text-[#C84B4B] border-[#FCE4E4]'
+                          : 'bg-[#F7F8FA] text-[#555C68] border-[#E7E9ED]'
                       }`}
                     >
                       {p.returnRate}%
                     </span>
                   </td>
-                  <td className="py-3.5 px-4 text-right font-medium text-slate-900">
+                  <td className="py-3.5 px-6 text-right font-bold text-[#17191C] tabular-nums">
                     {formatINR(p.grossRevenue)}
                   </td>
-                  <td className="py-3.5 px-4 text-right text-slate-500 font-mono">
+                  <td className="py-3.5 px-6 text-right text-[#737983] tabular-nums font-medium">
                     {formatINR(p.totalCost)}
                   </td>
-                  <td className="py-3.5 px-4 text-right font-bold text-emerald-700">
+                  <td className="py-3.5 px-6 text-right font-bold text-[#16835D] tabular-nums">
                     {formatINR(p.netProfit)}
                   </td>
-                  <td className="py-3.5 px-4 text-right font-bold">
-                    <span
-                      className={`px-2 py-0.5 rounded-full text-[11px] ${
-                        p.profitMargin >= 25
-                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                          : p.profitMargin < 15
-                          ? 'bg-red-50 text-red-700 border border-red-200'
-                          : 'bg-amber-50 text-amber-700 border border-amber-200'
-                      }`}
-                    >
-                      {p.profitMargin}%
-                    </span>
+                  <td className="py-3.5 px-6 text-right">
+                    <ProfitBadge margin={p.profitMargin} />
                   </td>
                 </tr>
               ))}

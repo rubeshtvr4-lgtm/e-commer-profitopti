@@ -1,13 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { Package, Plus, Search, Edit3, Trash2, AlertCircle } from 'lucide-react';
+import { Package, Plus, Search, Edit3, Trash2, ChevronLeft, ChevronRight, AlertTriangle } from 'lucide-react';
 import { api } from '../../lib/apiClient';
 import { Product, Pagination } from '../../types';
-import { formatINR } from '../../lib/currency';
+import { formatINR, formatPercent } from '../../lib/currency';
 import { Button } from '../../components/ui/Button';
+import { ProfitBadge } from '../../components/common/ProfitBadge';
+import { PageHeader } from '../../components/common/PageHeader';
 import { EmptyState } from '../../components/common/EmptyState';
+import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { ProductModal } from './ProductModal';
+import { useToast } from '../../contexts/ToastContext';
 
 export const ProductsListPage: React.FC = () => {
+  const { success, error: toastError } = useToast();
   const [products, setProducts] = useState<Product[]>([]);
   const [pagination, setPagination] = useState<Pagination>({
     page: 1,
@@ -19,9 +24,11 @@ export const ProductsListPage: React.FC = () => {
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [loading, setLoading] = useState(true);
 
-  // Modal
+  // Modals & confirmation
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [deleteProductTarget, setDeleteProductTarget] = useState<Product | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const fetchProducts = async (page = 1) => {
     try {
@@ -54,27 +61,28 @@ export const ProductsListPage: React.FC = () => {
     fetchProducts(1);
   };
 
-  const handleDelete = async (id: string, name: string) => {
-    if (!window.confirm(`Are you sure you want to delete "${name}"?`)) return;
+  const handleConfirmDelete = async () => {
+    if (!deleteProductTarget) return;
     try {
-      await api.delete(`/products/${id}`);
+      setIsDeleting(true);
+      await api.delete(`/products/${deleteProductTarget.id || deleteProductTarget._id}`);
+      success('Product Deleted', `Removed ${deleteProductTarget.name} from catalog.`);
+      setDeleteProductTarget(null);
       fetchProducts(pagination.page);
-    } catch (err) {
-      console.error('Failed to delete product', err);
+    } catch (err: any) {
+      toastError('Delete Failed', err?.message || 'Server error occurred');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-xl font-bold text-slate-900 tracking-tight">Product Catalog & SKU Margins</h2>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Unit cost economics, target selling prices, and live inventory levels
-          </p>
-        </div>
-
+      <PageHeader
+        title="Product Catalog & SKU Margins"
+        description="Monitor unit economics, inventory coverage, and profit margins per SKU"
+      >
         <Button
           variant="primary"
           onClick={() => {
@@ -85,46 +93,48 @@ export const ProductsListPage: React.FC = () => {
         >
           Add Product
         </Button>
-      </div>
+      </PageHeader>
 
-      {/* Filters */}
-      <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3">
+      {/* Filter and Search Bar */}
+      <div className="bg-white p-3.5 sm:p-4 rounded-xl border border-[#E7E9ED] shadow-[0_1px_2px_rgba(0,0,0,0.02)] flex flex-col sm:flex-row items-center justify-between gap-3">
         <form onSubmit={handleSearchSubmit} className="relative w-full sm:w-80">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+          <Search className="w-4 h-4 text-[#737983] absolute left-3 top-2.5" />
           <input
             type="text"
-            placeholder="Search by SKU or product name..."
+            placeholder="Search by SKU or title..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-3 py-1.5 border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-brand-500"
+            className="w-full pl-9 pr-3 py-1.5 border border-[#E7E9ED] rounded-lg text-xs text-[#17191C] focus:outline-none focus:border-[#176B57] focus:ring-2 focus:ring-[#176B57]/10"
           />
         </form>
 
-        <select
-          value={categoryFilter}
-          onChange={(e) => setCategoryFilter(e.target.value)}
-          className="text-xs font-medium px-3 py-1.5 border border-slate-300 rounded-lg bg-white text-slate-700"
-        >
-          <option value="all">All Categories</option>
-          <option value="Apparel">Apparel</option>
-          <option value="Accessories">Accessories</option>
-          <option value="Footwear">Footwear</option>
-          <option value="Electronics">Electronics</option>
-          <option value="Home & Living">Home & Living</option>
-        </select>
+        <div className="flex items-center gap-2.5 w-full sm:w-auto">
+          <select
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value)}
+            className="text-xs font-medium px-3 py-1.5 border border-[#E7E9ED] rounded-lg bg-white text-[#17191C] focus:outline-none focus:border-[#176B57]"
+          >
+            <option value="all">All Categories</option>
+            <option value="Apparel">Apparel</option>
+            <option value="Accessories">Accessories</option>
+            <option value="Footwear">Footwear</option>
+            <option value="Electronics">Electronics</option>
+            <option value="Home & Living">Home & Living</option>
+          </select>
+        </div>
       </div>
 
-      {/* Table */}
+      {/* Product Catalog Table */}
       {loading ? (
-        <div className="bg-white p-8 rounded-2xl border border-slate-200 text-center animate-pulse">
-          <div className="h-6 bg-slate-200 rounded w-1/3 mx-auto mb-4" />
-          <div className="h-4 bg-slate-200 rounded w-1/2 mx-auto" />
+        <div className="bg-white p-12 rounded-2xl border border-[#E7E9ED] text-center animate-pulse">
+          <div className="h-6 bg-[#E7E9ED] rounded w-1/4 mx-auto mb-3" />
+          <div className="h-4 bg-[#E7E9ED] rounded w-1/3 mx-auto" />
         </div>
       ) : products.length === 0 ? (
         <EmptyState
-          icon={<Package className="w-10 h-10 text-brand-600" />}
+          icon={<Package className="w-8 h-8 text-[#176B57]" />}
           title="No Products in Catalog"
-          description="Create your first product SKU or seed demo products to see margin analysis."
+          description="Create your first SKU or seed demo store products to inspect unit economics."
           actionLabel="Add Product"
           onAction={() => {
             setSelectedProduct(null);
@@ -133,86 +143,78 @@ export const ProductsListPage: React.FC = () => {
           showSeedDemo={true}
         />
       ) : (
-        <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm overflow-hidden">
+        <div className="bg-white border border-[#E7E9ED] rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.02)] overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50 text-slate-500 uppercase tracking-wider font-semibold border-b border-slate-200">
+              <thead className="bg-[#F7F8FA] text-[#737983] uppercase tracking-wider font-semibold border-b border-[#E7E9ED]">
                 <tr>
-                  <th className="py-3 px-4">SKU Code</th>
-                  <th className="py-3 px-4">Product Name</th>
-                  <th className="py-3 px-4">Category</th>
-                  <th className="py-3 px-4 text-right">Selling Price</th>
-                  <th className="py-3 px-4 text-right">Unit COGS</th>
-                  <th className="py-3 px-4 text-right">Unit Profit</th>
-                  <th className="py-3 px-4 text-right">Margin</th>
-                  <th className="py-3 px-4 text-center">Stock</th>
-                  <th className="py-3 px-4 text-center">Actions</th>
+                  <th className="py-3 px-6">SKU Code</th>
+                  <th className="py-3 px-6">Product Title</th>
+                  <th className="py-3 px-6">Category</th>
+                  <th className="py-3 px-6 text-right">Selling Price</th>
+                  <th className="py-3 px-6 text-right">Unit Cost (COGS)</th>
+                  <th className="py-3 px-6 text-center">Unit Margin</th>
+                  <th className="py-3 px-6 text-center">Stock</th>
+                  <th className="py-3 px-6 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-[#E7E9ED]">
                 {products.map((p) => {
-                  const profitUnit = p.sellingPrice - p.unitCost;
-                  const margin =
-                    p.sellingPrice > 0 ? ((profitUnit / p.sellingPrice) * 100).toFixed(1) : '0';
-                  const isLowMargin = Number(margin) < 15;
+                  const profit = p.sellingPrice - p.unitCost;
+                  const marginPct =
+                    p.sellingPrice > 0 ? (profit / p.sellingPrice) * 100 : 0;
                   const isLowStock = p.stockQuantity <= 5;
 
                   return (
-                    <tr key={p.id} className="hover:bg-slate-50/70 transition-colors">
-                      <td className="py-3.5 px-4 font-mono font-bold text-slate-900">{p.SKU}</td>
-                      <td className="py-3.5 px-4 font-semibold text-slate-800">{p.name}</td>
-                      <td className="py-3.5 px-4 text-slate-600">
-                        <span className="px-2 py-0.5 rounded bg-slate-100 text-[11px] font-medium">
+                    <tr key={p.id || p._id} className="hover:bg-[#F7F8FA]/60 transition-colors">
+                      <td className="py-3.5 px-6 font-mono font-bold text-[#17191C]">
+                        {p.SKU}
+                      </td>
+                      <td className="py-3.5 px-6 font-semibold text-[#17191C]">
+                        {p.name}
+                      </td>
+                      <td className="py-3.5 px-6">
+                        <span className="px-2 py-0.5 rounded bg-[#F1F3F6] text-[#555C68] font-medium text-[11px] border border-[#E7E9ED]">
                           {p.category}
                         </span>
                       </td>
-                      <td className="py-3.5 px-4 text-right font-semibold text-slate-900">
+                      <td className="py-3.5 px-6 text-right font-bold text-[#17191C] tabular-nums">
                         {formatINR(p.sellingPrice)}
                       </td>
-                      <td className="py-3.5 px-4 text-right text-slate-500 font-mono">
+                      <td className="py-3.5 px-6 text-right text-[#737983] tabular-nums font-medium">
                         {formatINR(p.unitCost)}
                       </td>
-                      <td className="py-3.5 px-4 text-right font-semibold text-emerald-700">
-                        {formatINR(profitUnit)}
+                      <td className="py-3.5 px-6 text-center">
+                        <ProfitBadge amount={profit} margin={marginPct} showBoth />
                       </td>
-                      <td className="py-3.5 px-4 text-right">
+                      <td className="py-3.5 px-6 text-center">
                         <span
-                          className={`font-bold px-2 py-0.5 rounded-full text-[11px] ${
-                            isLowMargin
-                              ? 'bg-red-50 text-red-700 border border-red-200'
-                              : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                          }`}
-                        >
-                          {margin}%
-                        </span>
-                      </td>
-                      <td className="py-3.5 px-4 text-center">
-                        <span
-                          className={`font-semibold px-2 py-0.5 rounded text-[11px] ${
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-bold tabular-nums border ${
                             isLowStock
-                              ? 'bg-amber-100 text-amber-900 font-bold'
-                              : 'bg-slate-100 text-slate-700'
+                              ? 'bg-[#FEF7EC] text-[#D97706] border-[#FDEECC]'
+                              : 'bg-[#F7F8FA] text-[#17191C] border-[#E7E9ED]'
                           }`}
                         >
-                          {p.stockQuantity} pcs
+                          {isLowStock && <AlertTriangle className="w-3 h-3 text-[#D97706]" />}
+                          {p.stockQuantity} units
                         </span>
                       </td>
-                      <td className="py-3.5 px-4 text-center">
-                        <div className="flex items-center justify-center gap-1.5">
+                      <td className="py-3.5 px-6 text-right">
+                        <div className="flex items-center justify-end gap-1">
                           <button
                             onClick={() => {
                               setSelectedProduct(p);
                               setIsModalOpen(true);
                             }}
-                            className="p-1.5 text-slate-400 hover:text-slate-800 rounded-lg hover:bg-slate-100"
                             title="Edit Product"
+                            className="p-1.5 text-[#737983] hover:text-[#17191C] rounded-lg hover:bg-[#F1F3F6] transition-colors"
                           >
                             <Edit3 className="w-3.5 h-3.5" />
                           </button>
                           <button
-                            onClick={() => handleDelete(p.id, p.name)}
-                            className="p-1.5 text-slate-400 hover:text-red-600 rounded-lg hover:bg-red-50"
+                            onClick={() => setDeleteProductTarget(p)}
                             title="Delete Product"
+                            className="p-1.5 text-[#737983] hover:text-[#C84B4B] rounded-lg hover:bg-[#FDF2F2] transition-colors"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
@@ -224,14 +226,61 @@ export const ProductsListPage: React.FC = () => {
               </tbody>
             </table>
           </div>
+
+          {/* Pagination Toolbar */}
+          {pagination.totalPages > 1 && (
+            <div className="px-6 py-3.5 bg-[#F7F8FA] border-t border-[#E7E9ED] flex items-center justify-between text-xs text-[#737983]">
+              <span>
+                Showing page <strong className="text-[#17191C]">{pagination.page}</strong> of{' '}
+                <strong className="text-[#17191C]">{pagination.totalPages}</strong> (
+                {pagination.total} products)
+              </span>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="xs"
+                  disabled={pagination.page <= 1}
+                  onClick={() => fetchProducts(pagination.page - 1)}
+                  icon={<ChevronLeft className="w-3.5 h-3.5" />}
+                >
+                  Prev
+                </Button>
+                <Button
+                  variant="outline"
+                  size="xs"
+                  disabled={pagination.page >= pagination.totalPages}
+                  onClick={() => fetchProducts(pagination.page + 1)}
+                  icon={<ChevronRight className="w-3.5 h-3.5" />}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
+      {/* Product Edit / Create Modal */}
       <ProductModal
-        product={selectedProduct}
         isOpen={isModalOpen}
+        product={selectedProduct}
         onClose={() => setIsModalOpen(false)}
-        onSuccess={() => fetchProducts(pagination.page)}
+        onSaved={() => {
+          setIsModalOpen(false);
+          fetchProducts(pagination.page);
+        }}
+      />
+
+      {/* Accessible Confirm Delete Dialog */}
+      <ConfirmDialog
+        isOpen={!!deleteProductTarget}
+        onClose={() => setDeleteProductTarget(null)}
+        onConfirm={handleConfirmDelete}
+        title="Delete Product SKU"
+        message={`Are you sure you want to delete "${deleteProductTarget?.name}" (${deleteProductTarget?.SKU})? This action cannot be undone.`}
+        confirmLabel="Delete SKU"
+        loading={isDeleting}
+        isDestructive={true}
       />
     </div>
   );

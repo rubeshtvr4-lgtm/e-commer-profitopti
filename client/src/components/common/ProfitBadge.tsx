@@ -15,19 +15,19 @@ export const ProfitBadge: React.FC<ProfitBadgeProps> = ({
   const isLoss = (amount !== undefined && amount < 0) || (margin !== undefined && margin < 0);
   const isThin = !isLoss && margin !== undefined && margin < 15;
 
-  let colorClasses = 'bg-emerald-50 text-emerald-700 border-emerald-200';
+  let colorClasses = 'bg-[#EAF5F0] text-[#16835D] border-[#D2ECE1]';
   if (isLoss) {
-    colorClasses = 'bg-red-50 text-red-700 border-red-200';
+    colorClasses = 'bg-[#FDF2F2] text-[#C84B4B] border-[#FCE4E4]';
   } else if (isThin) {
-    colorClasses = 'bg-amber-50 text-amber-700 border-amber-200';
+    colorClasses = 'bg-[#FEF7EC] text-[#D97706] border-[#FDEECC]';
   }
 
   return (
     <span
-      className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${colorClasses}`}
+      className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[11px] font-semibold border tabular-nums ${colorClasses}`}
     >
       {amount !== undefined && <span>{formatINR(amount)}</span>}
-      {showBoth && amount !== undefined && margin !== undefined && <span>•</span>}
+      {showBoth && amount !== undefined && margin !== undefined && <span className="opacity-50">•</span>}
       {margin !== undefined && <span>{formatPercent(margin)}</span>}
     </span>
   );

@@ -47,6 +47,15 @@ export async function updateSettings(req: AuthenticatedRequest, res: Response): 
         timezone: user.timezone,
         expenseCategories: user.expenseCategories,
       },
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        businessName: user.businessName,
+        currency: user.currency,
+        timezone: user.timezone,
+        expenseCategories: user.expenseCategories,
+      },
     },
   });
 }
