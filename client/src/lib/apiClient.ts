@@ -1,4 +1,4 @@
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/v1';
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://profitpilot-api-63yz.onrender.com/api/v1';
 
 export class ApiError extends Error {
   public status: number;
